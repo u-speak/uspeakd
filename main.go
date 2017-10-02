@@ -34,6 +34,7 @@ func main() {
 		if core.Config.Web.Static.Directory != "false" && core.Config.Web.Static.Directory != "" {
 			go core.RunWeb()
 		}
+		go core.RunAPI()
 		core.RunNode()
 		return nil
 	}
