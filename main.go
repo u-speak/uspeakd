@@ -28,6 +28,7 @@ func main() {
 		},
 	}
 	app.Action = func(c *cli.Context) error {
+		log.Infof("Welcome to uspeak!")
 		if tempDir != "" {
 			core.Config.Web.Static.Directory = tempDir
 		}
