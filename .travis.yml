@@ -1,0 +1,24 @@
+language: go
+env:
+  global:
+  - VERSION=$(cat VERSION)
+script:
+- go test -v
+before_deploy:
+- mkdir -p release
+- "GOOS=linux  GOARCH=amd64 go build -o release/uspeakd-v$VERSION-linux-amd64"
+- "GOOS=darwin GOARCH=amd64 go build -o release/uspeakd-v$VERSION-darwin-amd64"
+- "GOOS=windows GOARCH=amd64 go build -o release/uspeakd-v$VERSION-win64"
+- "GOOS=windows GOARCH=386 go build -o release/uspeakd-v$VERSION-win32"
+
+deploy:
+  provider: releases
+  api_key:
+    secure: tR1ZtWLjSrieqwlaklb5u1UX2NHuACZ514GFUSXzQbo46y8KquF0B2RkxY5mYT6S8DMD0dTlz/GH99cswiYgTj4tJjkxVREmt2pG+2FVWKHvXjSZguard3iyEds4ZWLxVc+mHv7mveKdHWxytIcAgcqUVeyrOaXnZ/6TFSu85OKTkqAmEHHn/BOHetCX4hVXZ0MTuFotaH8EJMDK5mUYOB0nSs9O95uSlVXylLoLiAXxingYIliHARm3Et8aNQ0N2EyPHPpXVYquRZlcL4Auh7hgAtG3TrZjVwXBzR8x7ZxOvPqkK9uLGOcmLt8f/DNYeP0WP0qnUzuyBVNiJah1bhSjDmFIaozhdxh3bDo1VfBXKOzhhRxQYQ+veGRZMTHTKrTbVZDhmweTuZ1Wwld0e3t3Qqboggp5neLlsLY9uUjueg3kpjMPfFku1Ap5eeMJpSnxAIBOOcjtof/dNJx4CTGiErJcp2qt/u+Ig8jXnr/mzrcvI6ZFqOUQ4zUaRBKyGLepY89gV/RzMZDVapZxZSQFvjubK6aNBtkXnvb4unCGclwZ2qf9lUz9e4y1/ezUyMlfGmVvFQcQWaxT0XrHC7jGtJhPlRUupmfiEI/ye7b69o8WlsQyVLAsY8YfuOojDP3x6Iul+oijM4buDvywuqBM6zb7bQTbEtkmkng63iw=
+  file:
+    - "release/uspeakd-v$VERSION-linux-amd64"
+    - "release/uspeakd-v$VERSION-darwin-amd64"
+    - "release/uspeakd-v$VERSION-win64"
+    - "release/uspeakd-v$VERSION-win32"
+  on:
+    tags: true
