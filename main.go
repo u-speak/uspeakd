@@ -15,25 +15,23 @@ func main() {
 		log.Fatal(err)
 	}
 
+	switch core.Config.Logger.Format {
+	case "json":
+		log.SetFormatter(&log.JSONFormatter{})
+		log.Info("Using json formatter")
+	default:
+		log.Info("Using default formatter")
+	}
 	app := cli.NewApp()
 	app.Name = "uspeakd"
 	app.Version = "0.1.0"
 	app.Usage = "Run a uspeak node"
-	var tempDir string
-	app.Flags = []cli.Flag{
-		cli.StringFlag{
-			Name:        "web",
-			Usage:       "run a static webserver, serving files in the specified directory. When set to false, the static server is disabled.",
-			Destination: &tempDir,
-		},
-	}
 	app.Action = func(c *cli.Context) error {
 		log.Infof("Welcome to uspeak!")
-		if tempDir != "" {
-			core.Config.Web.Static.Directory = tempDir
-		}
 		if core.Config.Web.Static.Directory != "false" && core.Config.Web.Static.Directory != "" {
 			go core.RunWeb()
+		} else {
+			log.Info("Static Webserver disabled")
 		}
 		core.Run()
 		return nil
