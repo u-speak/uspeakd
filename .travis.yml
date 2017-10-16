@@ -7,10 +7,10 @@ script:
 
 before_deploy:
 - mkdir -p release
-- "GOOS=linux  GOARCH=amd64 go build -o release/uspeakd-v$VERSION-linux-amd64"
-- "GOOS=darwin GOARCH=amd64 go build -o release/uspeakd-v$VERSION-darwin-amd64"
-- "GOOS=windows GOARCH=amd64 go build -o release/uspeakd-v$VERSION-win64.exe"
-- "GOOS=windows GOARCH=386 go build -o release/uspeakd-v$VERSION-win32.exe"
+- "GOOS=linux  GOARCH=amd64 go build -o release/uspeakd-$VERSION-linux-amd64"
+- "GOOS=darwin GOARCH=amd64 go build -o release/uspeakd-$VERSION-darwin-amd64"
+- "GOOS=windows GOARCH=amd64 go build -o release/uspeakd-$VERSION-win64.exe"
+- "GOOS=windows GOARCH=386 go build -o release/uspeakd-$VERSION-win32.exe"
 
 deploy:
   provider: releases
