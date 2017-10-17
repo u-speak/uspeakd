@@ -1,0 +1,5 @@
+logger:
+    debug: true
+global:
+    sslcert: 'local.uspeak.io.cert' 
+    sslkey: 'local.uspeak.io.key'
