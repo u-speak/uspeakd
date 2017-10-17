@@ -1,3 +1,4 @@
 uspeakd
 nodes
 *.retry
+*.pem

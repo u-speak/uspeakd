@@ -1,0 +1,11 @@
+[Unit]
+Description=uspeak node software
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/opt/uspeak/uspeakd
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target

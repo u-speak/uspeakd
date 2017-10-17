@@ -7,18 +7,39 @@
   vars_prompt:
     - name: VERSION
       prompt: 'Enter version of binary to deploy'
-      default: 'v0.0.1'
+      default: 'v0.0.2'
   tasks:
   - name: create deployment directory
     file:
       path: /opt/uspeak
       state: directory
+  - name: create configuration directory
+    file:
+      path: /etc/uspeak
+      state: directory
+  - name: write config file
+    template:
+      src: ansible/config.yml.j2
+      dest: /etc/uspeak/config.yml
+  - name: copy ssl certificate
+    copy:
+      src: cert.pem
+      dest: '/etc/uspeak/cert.pem'
+  - name: copy ssl key
+    copy:
+      src: key.pem
+      dest: '/etc/uspeak/key.pem'
   - name: download the latest uspeakd binary
     get_url:
       url: 'https://github.com/u-speak/uspeakd/releases/download/{{VERSION}}/uspeakd-{{VERSION}}-linux-amd64'
       dest: /opt/uspeak/uspeakd
       mode: 0755
-  - name: write config file
-    template:
-      src: ansible/config.yml.j2
-      dest: /opt/uspeak/config.yml
+  - name: update service file
+    copy:
+      src: 'ansible/uspeak.service'
+      dest: /etc/systemd/service/
+  - name: restart service
+    systemd:
+      state: restarted
+      daemon_reload: yes
+      name: uspeak
