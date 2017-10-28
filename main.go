@@ -43,7 +43,10 @@ func main() {
 			log.Info("Static Webserver disabled")
 		}
 
-		n := node.New(core.Config)
+		n, err := node.New(core.Config)
+		if err != nil {
+			log.Fatal(err)
+		}
 		go n.Run()
 		go core.RunAPI(n)
 
