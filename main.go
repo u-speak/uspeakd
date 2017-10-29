@@ -29,6 +29,12 @@ func main() {
 	}
 
 	app := cli.NewApp()
+	app.Flags = []cli.Flag{
+		cli.BoolFlag{
+			Name:  "repl",
+			Usage: "start a REPL after launching to interact with the running instance",
+		},
+	}
 	app.Name = "uspeakd"
 	app.Version = "0.1.0"
 	app.Usage = "Run a uspeak node"
@@ -50,9 +56,15 @@ func main() {
 		go n.Run()
 		go core.RunAPI(n)
 
-		quit := make(chan os.Signal)
-		signal.Notify(quit, os.Interrupt)
-		<-quit
+		if c.Bool("repl") {
+			log.SetLevel(log.DebugLevel)
+			log.Debug("Starting REPL")
+			startRepl(n)
+		} else {
+			quit := make(chan os.Signal)
+			signal.Notify(quit, os.Interrupt)
+			<-quit
+		}
 		return nil
 	}
 	err = app.Run(os.Args)
