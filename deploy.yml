@@ -7,7 +7,7 @@
   vars_prompt:
     - name: VERSION
       prompt: 'Enter version of binary to deploy'
-      default: 'v0.0.5'
+      default: 'v0.0.6'
   tasks:
   - name: create deployment directory
     file:
@@ -32,7 +32,8 @@
   - name: download the latest uspeakd binary
     get_url:
       url: 'https://github.com/u-speak/uspeakd/releases/download/{{VERSION}}/uspeakd-{{VERSION}}-linux-amd64'
-      dest: /opt/uspeak/uspeakd
+      force: yes
+      dest: '/opt/uspeak/uspeakd'
       mode: 0755
   - name: update service file
     copy:
