@@ -1,5 +1,5 @@
 # uspeakd
-This is the main deamon. 
+This is the main daemon. 
 
 It allows you to deploy a node simply using ansible playbook. 
 
