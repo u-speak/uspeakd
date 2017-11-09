@@ -36,7 +36,7 @@ func main() {
 		},
 	}
 	app.Name = "uspeakd"
-	app.Version = "0.1.0"
+	app.Version = "0.0.5"
 	app.Usage = "Run a uspeak node"
 	app.Action = func(c *cli.Context) error {
 		if core.Config.Global.SSLKey == "" || core.Config.Global.SSLCert == "" {
