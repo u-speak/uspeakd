@@ -36,7 +36,7 @@ func main() {
 		},
 	}
 	app.Name = "uspeakd"
-	app.Version = "0.0.7"
+	app.Version = "0.0.8"
 	core.Config.Version = app.Version
 	app.Usage = "Run a uspeak node"
 	app.Action = func(c *cli.Context) error {
