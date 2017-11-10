@@ -44,6 +44,10 @@ func startRepl(n *node.Node) {
 			readline.PcItem("print", ci("post"), ci("key"), ci("image")),
 			readline.PcItem("validate", ci("post"), ci("key"), ci("image")),
 		),
+		readline.PcItem("node",
+			readline.PcItem("connect"),
+			readline.PcItem("status"),
+		),
 	)
 	l, err := readline.NewEx(&readline.Config{
 		Prompt:          n.ListenInterface + " \033[31m»\033[0m ",
@@ -105,7 +109,34 @@ func startRepl(n *node.Node) {
 			} else {
 				log.WithField("hash", base64.URLEncoding.EncodeToString(h[:])).Info("Block added")
 			}
-
+		case strings.HasPrefix(line, "node connect"):
+			remote := strings.Split(line, " ")[2]
+			err := n.Connect(remote)
+			if err != nil {
+				log.Error(err)
+			} else {
+				log.Info("Successfully connected")
+			}
+		case line == "node status":
+			s := n.Status()
+			log.Infof("Staus for node %s", s.Address)
+			log.Infof("Total Blocks: %d", s.Length)
+			log.WithFields(log.Fields{
+				"Length":   s.Chains.Post.Length,
+				"Valid":    s.Chains.Post.Valid,
+				"LastHash": s.Chains.Post.LastHash,
+			}).Info("Post Chain")
+			log.WithFields(log.Fields{
+				"Length":   s.Chains.Image.Length,
+				"Valid":    s.Chains.Image.Valid,
+				"LastHash": s.Chains.Image.LastHash,
+			}).Info("Image Chain")
+			log.WithFields(log.Fields{
+				"Length":   s.Chains.Key.Length,
+				"Valid":    s.Chains.Key.Valid,
+				"LastHash": s.Chains.Key.LastHash,
+			}).Info("Key Chain")
+			log.Info("End Status")
 		case simpleMatch("chain print (post|image|key)", line):
 			c := getChain(n, strings.Split(line, " ")[2])
 			dump, err := c.DumpChain()
