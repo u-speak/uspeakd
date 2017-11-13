@@ -1,5 +1,7 @@
 logger:
     debug: true
+storage:
+    postdir: 'posts'
 global:
     sslcert: 'cert.pem' 
     sslkey: 'key.pem'

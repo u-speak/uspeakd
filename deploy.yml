@@ -4,6 +4,7 @@
   remote_user: root
   vars:
       LOG_FORMAT: 'json'
+      MESSAGE: 'a nice person'
   vars_prompt:
     - name: VERSION
       prompt: 'Enter version of binary to deploy'
@@ -38,7 +39,7 @@
   - name: update service file
     copy:
       src: 'ansible/uspeak.service'
-      dest: /etc/systemd/service/
+      dest: /etc/systemd/system/
   - name: restart service
     systemd:
       state: restarted

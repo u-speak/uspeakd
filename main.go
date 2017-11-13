@@ -55,6 +55,9 @@ func main() {
 			log.Fatal(err)
 		}
 		go n.Run()
+		if err := n.Connect(n.ListenInterface); err != nil {
+			log.Error(err)
+		}
 		go core.RunAPI(n)
 
 		if c.Bool("repl") {

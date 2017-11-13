@@ -103,12 +103,7 @@ func startRepl(n *node.Node) {
 			content := lc[2]
 			pc := n.PostChain
 			b := chain.Block{Date: time.Now(), Type: "post", PrevHash: pc.LastHash(), Content: content}
-			h, err := n.PostChain.Add(b)
-			if err != nil {
-				log.Error(err)
-			} else {
-				log.WithField("hash", base64.URLEncoding.EncodeToString(h[:])).Info("Block added")
-			}
+			n.SubmitBlock(b)
 		case strings.HasPrefix(line, "node connect"):
 			remote := strings.Split(line, " ")[2]
 			err := n.Connect(remote)
@@ -136,6 +131,7 @@ func startRepl(n *node.Node) {
 				"Valid":    s.Chains.Key.Valid,
 				"LastHash": s.Chains.Key.LastHash,
 			}).Info("Key Chain")
+			log.Infof("Remote Connections: %d", s.Connections)
 			log.Info("End Status")
 		case simpleMatch("chain print (post|image|key)", line):
 			c := getChain(n, strings.Split(line, " ")[2])
