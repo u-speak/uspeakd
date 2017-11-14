@@ -1,0 +1,48 @@
+# Compile with
+# CGO_ENABLED=0 go build -a -installsuffix cgo -ldflags '-s' -o uspeakd-static *.go
+---
+- hosts: nodes
+  gather_facts: no
+  remote_user: root
+  vars:
+      LOG_FORMAT: 'json'
+  vars_prompt:
+    - name: MESSAGE
+      prompt: 'Enter your server message'
+      default: 'a nice person'
+  tasks:
+  - name: create deployment directory
+    file:
+      path: /opt/uspeak
+      state: directory
+  - name: create configuration directory
+    file:
+      path: /etc/uspeak
+      state: directory
+  - name: write config file
+    template:
+      src: ansible/config.yml.j2
+      dest: /etc/uspeak/config.yml
+  - name: copy ssl certificate
+    copy:
+      src: cert.pem
+      dest: '/etc/uspeak/cert.pem'
+  - name: copy ssl key
+    copy:
+      src: key.pem
+      dest: '/etc/uspeak/key.pem'
+  - name: copy the uspeakd-static binary
+    copy:
+      src: uspeakd-static
+      dest: '/opt/uspeak/uspeakd'
+      force: yes
+      mode: 0755
+  - name: update service file
+    copy:
+      src: 'ansible/uspeak.service'
+      dest: /etc/systemd/system/
+  - name: restart service
+    systemd:
+      state: restarted
+      daemon_reload: yes
+      name: uspeak
