@@ -2,7 +2,7 @@
 # CGO_ENABLED=0 go build -a -installsuffix cgo -ldflags '-s' -o uspeakd-static *.go
 ---
 - hosts: nodes
-  gather_facts: no
+  gather_facts: yes
   remote_user: root
   vars:
       LOG_FORMAT: 'json'
@@ -11,9 +11,28 @@
       prompt: 'Enter your server message'
       default: 'a nice person'
   tasks:
+  - name: disable selinux
+    selinux:
+      state: disabled
+  - name: install epel
+    yum:
+      name: epel-release
+      state: latest
+  - name: install nginx
+    package:
+      name: nginx
+      state: latest
+  - name: install git
+    package:
+      name: git
+      state: latest
   - name: create deployment directory
     file:
       path: /opt/uspeak
+      state: directory
+  - name: create data directory
+    file:
+      path: /var/lib/uspeak/data
       state: directory
   - name: create configuration directory
     file:
@@ -41,8 +60,20 @@
     copy:
       src: 'ansible/uspeak.service'
       dest: /etc/systemd/system/
+  - name: clone portal repo
+    git:
+      repo: 'https://github.com/u-speak/portal.git'
+      dest: /opt/portal
   - name: restart service
     systemd:
       state: restarted
       daemon_reload: yes
       name: uspeak
+  - name: copy nginx config
+    copy:
+      src: 'ansible/nginx.conf'
+      dest: /etc/nginx/
+  - name: restart nginx
+    systemd:
+      state: restarted
+      name: nginx
