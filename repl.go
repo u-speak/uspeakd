@@ -47,6 +47,7 @@ func startRepl(n *node.Node) {
 		readline.PcItem("node",
 			readline.PcItem("connect"),
 			readline.PcItem("status"),
+			readline.PcItem("sync"),
 		),
 	)
 	l, err := readline.NewEx(&readline.Config{
@@ -157,6 +158,15 @@ func startRepl(n *node.Node) {
 					"hash": formatHash(b.Hash()),
 					"prev": formatHash(b.PrevHash),
 				}).Debug(b.Content)
+			}
+		case strings.HasPrefix(line, "node sync "):
+			lc := strings.Split(line, " ")
+			content := lc[2]
+			err := n.SynchronizeChain(content)
+			if err != nil {
+				log.Error(err)
+			} else {
+				log.Info("Successfully synced chain")
 			}
 		case simpleMatch("chain validate (post|image|key)", line):
 			c := getChain(n, strings.Split(line, " ")[2])
