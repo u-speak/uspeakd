@@ -104,6 +104,18 @@ func startRepl(n *node.Node) {
 			pc := n.PostChain
 			b := chain.Block{Date: time.Now(), Type: "post", PrevHash: pc.LastHash(), Content: content}
 			n.SubmitBlock(b)
+		case strings.HasPrefix(line, "image add "):
+                        lc := strings.Split(line, " ")
+                        content := lc[2]
+                        ic := n.ImageChain
+                        b := chain.Block{Date: time.Now(), Type: "image", PrevHash: ic.LastHash(), Content: content}
+                        n.SubmitBlock(b)
+		case strings.HasPrefix(line, "key add "):
+                        lc := strings.Split(line, " ")
+                        content := lc[2]
+                        kc := n.KeyChain
+                        b := chain.Block{Date: time.Now(), Type: "key", PrevHash: kc.LastHash(), Content: content}
+                        n.SubmitBlock(b)
 		case strings.HasPrefix(line, "node connect"):
 			remote := strings.Split(line, " ")[2]
 			err := n.Connect(remote)
