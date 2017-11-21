@@ -5,7 +5,6 @@ import (
 	"io"
 	"regexp"
 	"time"
-	//"strconv"
 	"strings"
 
 	"github.com/chzyer/readline"
