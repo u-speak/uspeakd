@@ -114,7 +114,7 @@ func startRepl(n *node.Node) {
 			}
 		case line == "node status":
 			s := n.Status()
-			log.Infof("Staus for node %s", s.Address)
+			log.Infof("Status for node %s", s.Address)
 			log.Infof("Total Blocks: %d", s.Length)
 			log.WithFields(log.Fields{
 				"Length":   s.Chains.Post.Length,
@@ -133,6 +133,18 @@ func startRepl(n *node.Node) {
 			}).Info("Key Chain")
 			log.Infof("Remote Connections: %d", s.Connections)
 			log.Info("End Status")
+		case strings.HasPrefix(line, "node sync"):
+			if len(line) <= 9 {
+			log.Errorf("No Sync-Endpoint specified.")
+			} else {
+                        remote := strings.Split(line, " ")[2]
+                        err := n.SynchronizeChain(remote)
+                        if err != nil {
+                                log.Error(err)
+                        } else {
+                                log.Info("Successfully synced Chain")
+                        }}
+
 		case simpleMatch("chain print (post|image|key)", line):
 			c := getChain(n, strings.Split(line, " ")[2])
 			dump, err := c.DumpChain()
