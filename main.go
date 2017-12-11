@@ -11,6 +11,8 @@ import (
 	"github.com/urfave/cli"
 )
 
+var VERSION string
+
 func main() {
 	err := configor.Load(&core.Config, "config.yml", "/etc/uspeak/config.yml")
 	if err != nil {
@@ -36,8 +38,8 @@ func main() {
 		},
 	}
 	app.Name = "uspeakd"
-	app.Version = "0.0.8"
-	core.Config.Version = app.Version
+	app.Version = VERSION
+	core.Config.Version = VERSION
 	app.Usage = "Run a uspeak node"
 	app.Action = func(c *cli.Context) error {
 		if core.Config.Global.SSLKey == "" || core.Config.Global.SSLCert == "" {
