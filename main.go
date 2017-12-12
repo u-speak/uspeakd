@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net"
 	"os"
 	"os/signal"
 
@@ -59,6 +60,16 @@ func main() {
 		go n.Run()
 		if err := n.Connect(n.ListenInterface); err != nil {
 			log.Error(err)
+		}
+		nodes, err := net.LookupTXT(core.Config.Global.DNS)
+		if err != nil {
+			log.Error(err)
+		} else {
+			for _, node := range nodes {
+				if err := n.Connect(node); err != nil {
+					log.Error(err)
+				}
+			}
 		}
 		go core.RunAPI(n)
 
