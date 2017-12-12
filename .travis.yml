@@ -3,6 +3,7 @@ env:
   global:
   - VERSION=$TRAVIS_TAG
 script:
+- go get -t -v ./...
 - go test -v
 
 before_deploy:
