@@ -2,3 +2,4 @@ uspeakd
 nodes
 *.retry
 *.pem
+credentials/

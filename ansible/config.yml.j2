@@ -4,7 +4,14 @@ global:
     sslcert: '/etc/uspeak/cert.pem'
     sslkey: '/etc/uspeak/key.pem'
     message: {{MESSAGE}}
+nodenetwork:
+    interface: '{{ansible_default_ipv4.address}}'
+hooks:
+  preadd: '{{hook_preadd}}'
 web:
     api:
         interface: '0.0.0.0'
         port: 4242
+        adminenabled: {{admin_enabled}}
+        adminuser: '{{admin_user}}'
+        adminpassword: '{{ lookup('password', 'credentials/'+ansible_default_ipv4.address)}}'
