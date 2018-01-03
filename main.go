@@ -10,6 +10,7 @@ import (
 	"github.com/u-speak/core"
 	"github.com/u-speak/core/node"
 	"github.com/urfave/cli"
+	"google.golang.org/grpc/grpclog"
 )
 
 var VERSION string
@@ -20,16 +21,20 @@ func main() {
 		log.Fatal(err)
 	}
 
+	gl := log.New()
 	switch core.Config.Logger.Format {
 	case "json":
 		log.SetFormatter(&log.JSONFormatter{})
+		gl.Formatter = &log.JSONFormatter{}
 		log.Info("Using json formatter")
 	default:
 		log.Info("Using default formatter")
 	}
 	if core.Config.Logger.Debug {
 		log.SetLevel(log.DebugLevel)
+		gl.Level = log.DebugLevel
 	}
+	grpclog.SetLogger(gl)
 
 	app := cli.NewApp()
 	app.Flags = []cli.Flag{
