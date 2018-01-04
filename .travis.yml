@@ -8,10 +8,10 @@ script:
 
 before_deploy:
 - mkdir -p release
-- "GOOS=linux  GOARCH=amd64 go build -o release/uspeakd-$VERSION-linux-amd64"
-- "GOOS=darwin GOARCH=amd64 go build -o release/uspeakd-$VERSION-darwin-amd64"
-- "GOOS=windows GOARCH=amd64 go build -o release/uspeakd-$VERSION-win64.exe"
-- "GOOS=windows GOARCH=386 go build -o release/uspeakd-$VERSION-win32.exe"
+- "CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -ldflags \"-s -X main.VERSION=$(git describe --tags --long)\" -o release/uspeakd-$VERSION-linux-amd64"
+- "CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -a -installsuffix cgo -ldflags \"-s -X main.VERSION=$(git describe --tags --long)\" -o release/uspeakd-$VERSION-darwin-amd64"
+- "CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -a -installsuffix cgo -ldflags \"-s -X main.VERSION=$(git describe --tags --long)\" -o release/uspeakd-$VERSION-windows-amd64"
+- "CGO_ENABLED=0 GOOS=windows GOARCH=386 go build -a -installsuffix cgo -ldflags \"-s -X main.VERSION=$(git describe --tags --long)\" -o release/uspeakd-$VERSION-windows-i386"
 
 deploy:
   provider: releases
