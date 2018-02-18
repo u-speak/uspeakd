@@ -1,5 +1,4 @@
 logger:
-    format: json
     debug: true
 storage:
     method: 'bolt'
@@ -7,8 +6,6 @@ global:
     sslcert: 'cert.pem' 
     sslkey: 'key.pem'
     dns: 'discovery.local.uspeak.io'
-hooks:
-    preadd: 'http://localhost:5000/handle'
 web:
     api:
         adminenabled: true
