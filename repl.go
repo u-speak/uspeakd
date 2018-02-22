@@ -110,7 +110,7 @@ func startRepl(n *node.Node) {
 			case "post":
 				p := s.Data.(*post.Post)
 				log.WithFields(log.Fields{
-					"date":  p.Date,
+					"date":  p.Timestamp,
 					"valid": p.Verify() == nil,
 					"keyid": p.Pubkey.KeyIdShortString(),
 				}).Info(p.Content)
@@ -236,7 +236,7 @@ func genpost(c string) *post.Post {
 	reader := packet.NewReader(block.Body)
 	pkt, _ := reader.Next()
 	sig, _ := pkt.(*packet.Signature)
-	p := &post.Post{Content: content, Pubkey: &privkey.PublicKey, Signature: sig, Date: time.Now()}
+	p := &post.Post{Content: content, Pubkey: &privkey.PublicKey, Signature: sig, Timestamp: time.Now().Unix()}
 	_ = p.JSON()
 	return p
 }

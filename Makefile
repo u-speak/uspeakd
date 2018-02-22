@@ -1,5 +1,7 @@
 install:
 	go install
+release:
+  CGO_ENABLED=0 go build -a -installsuffix cgo -ldflags "-s -X main.VERSION=$(git describe --tags --long)" -o uspeakd-static *.go
 node1: install
 	API_PORT=4001 \
 	STATIC_DIR=false \

@@ -4,6 +4,7 @@ global:
     sslcert: '/etc/uspeak/cert.pem'
     sslkey: '/etc/uspeak/key.pem'
     message: {{MESSAGE}}
+    dns: 'discovery.tangle.uspeak.io'
 nodenetwork:
     interface: '{{ansible_default_ipv4.address}}'
 hooks:
