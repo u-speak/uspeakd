@@ -1,16 +1,29 @@
 package main
 
 import (
+	"bytes"
+	"crypto/rand"
+	"crypto/rsa"
 	"encoding/base64"
+	"encoding/json"
+	"fmt"
 	"io"
 	"regexp"
-	"time"
 	"strings"
+	"time"
+
+	"github.com/u-speak/core/api"
+	"github.com/u-speak/core/node"
+	"github.com/u-speak/core/post"
+	"github.com/u-speak/core/tangle"
+	"github.com/u-speak/core/tangle/hash"
+	"github.com/u-speak/core/tangle/site"
 
 	"github.com/chzyer/readline"
 	log "github.com/sirupsen/logrus"
-	"github.com/u-speak/core/chain"
-	"github.com/u-speak/core/node"
+	"golang.org/x/crypto/openpgp"
+	"golang.org/x/crypto/openpgp/armor"
+	"golang.org/x/crypto/openpgp/packet"
 )
 
 func filterInput(r rune) (rune, bool) {
@@ -22,31 +35,20 @@ func filterInput(r rune) (rune, bool) {
 	return r, true
 }
 
-func formatHash(hash [32]byte) string {
-	// if Config.Logger.PrintEmoji {
-	// 	return util.CompactEmoji(hash)
-	// }
-	return base64.URLEncoding.EncodeToString(hash[:])
-}
-
 func startRepl(n *node.Node) {
-	ci := func(s string) *readline.PrefixCompleter {
-		return readline.PcItem(s)
-	}
 	var completer = readline.NewPrefixCompleter(
-		readline.PcItem("post",
+		readline.PcItem("site",
 			readline.PcItem("get"),
 			readline.PcItem("add"),
 		),
-		readline.PcItem("mine"),
-		readline.PcItem("chain",
-			readline.PcItem("print", ci("post"), ci("key"), ci("image")),
-			readline.PcItem("validate", ci("post"), ci("key"), ci("image")),
+		readline.PcItem("tangle",
+			readline.PcItem("print"),
+			readline.PcItem("status"),
 		),
 		readline.PcItem("node",
 			readline.PcItem("connect"),
 			readline.PcItem("status"),
-			readline.PcItem("sync"),
+			readline.PcItem("merge"),
 		),
 	)
 	l, err := readline.NewEx(&readline.Config{
@@ -78,44 +80,94 @@ func startRepl(n *node.Node) {
 
 		line = strings.TrimSpace(line)
 		switch {
-		case strings.HasPrefix(line, "post get "):
+		case strings.HasPrefix(line, "site get "):
 			lc := strings.Split(line, " ")
 			h, err := base64.URLEncoding.DecodeString(lc[2])
 			if err != nil {
 				log.Error(err)
 				break
 			}
-			var hash [32]byte
-			copy(hash[:], h)
-			c := getChain(n, lc[2])
-			block := c.Get(hash)
-			if block == nil {
-				log.Info("No block found")
-				break
+			s := n.Tangle.Get(hash.FromSlice(h))
+			vals := []hash.Hash{}
+			for _, v := range s.Site.Validates {
+				vals = append(vals, v.Hash())
 			}
 			log.WithFields(log.Fields{
-				"hash": formatHash(block.Hash()),
-				"prev": formatHash(block.PrevHash),
-				"date": block.Date.String(),
-			}).Debug(block.Content)
-		case strings.HasPrefix(line, "post add "):
+				"hash":      s.Site.Hash(),
+				"validates": vals,
+				"weight":    n.Tangle.Weight(s.Site),
+				"type":      s.Site.Type,
+			}).Debug(s.Site.Content)
+		case strings.HasPrefix(line, "data get "):
 			lc := strings.Split(line, " ")
-			content := lc[2]
-			pc := n.PostChain
-			b := chain.Block{Date: time.Now(), Type: "post", PrevHash: pc.LastHash(), Content: content}
-			n.SubmitBlock(b)
-		case strings.HasPrefix(line, "image add "):
-                        lc := strings.Split(line, " ")
-                        content := lc[2]
-                        ic := n.ImageChain
-                        b := chain.Block{Date: time.Now(), Type: "image", PrevHash: ic.LastHash(), Content: content}
-                        n.SubmitBlock(b)
-		case strings.HasPrefix(line, "key add "):
-                        lc := strings.Split(line, " ")
-                        content := lc[2]
-                        kc := n.KeyChain
-                        b := chain.Block{Date: time.Now(), Type: "key", PrevHash: kc.LastHash(), Content: content}
-                        n.SubmitBlock(b)
+			h, err := base64.URLEncoding.DecodeString(lc[2])
+			if err != nil {
+				log.Error(err)
+				break
+			}
+			s := n.Tangle.Get(hash.FromSlice(h))
+			switch s.Site.Type {
+			case "post":
+				p := s.Data.(*post.Post)
+				log.WithFields(log.Fields{
+					"date":  p.Date,
+					"valid": p.Verify() == nil,
+					"keyid": p.Pubkey.KeyIdShortString(),
+				}).Info(p.Content)
+			}
+		case strings.HasPrefix(line, "site add "):
+			cnt := line[9:]
+			recs := n.Tangle.RecommendTips()
+			for _, r := range recs {
+				log.Infof("Recommended: %s", r.Hash())
+			}
+			post := genpost(cnt)
+			h, err := post.Hash()
+			if err != nil {
+				log.Error(err)
+				break
+			}
+			s := &site.Site{
+				Validates: recs,
+				Content:   h,
+				Type:      "post",
+			}
+			s.Mine(1)
+			log.WithFields(log.Fields{"nonce": s.Nonce, "weight": s.Hash().Weight()}).Infof("Finished Mining: %s", s.Hash())
+
+			n.Submit(&tangle.Object{Site: s, Data: post})
+			if err != nil {
+				log.Error(err)
+			}
+		case strings.HasPrefix(line, "site gen "):
+			cnt := line[9:]
+			recs := n.Tangle.RecommendTips()
+			post := genpost(cnt)
+			h, err := post.Hash()
+			if err != nil {
+				log.Error(err)
+				break
+			}
+			s := &site.Site{
+				Validates: recs,
+				Content:   h,
+				Type:      "post",
+			}
+			s.Mine(1)
+			j := api.JSONize(&tangle.Object{Site: s, Data: post})
+			b, err := json.Marshal(j)
+			if err != nil {
+				log.Error(err)
+				break
+			}
+			fmt.Println(string(b))
+		case strings.HasPrefix(line, "node merge "):
+			remote := strings.Split(line, " ")[2]
+			err := n.Merge(remote)
+			if err != nil {
+				log.Error(err)
+				break
+			}
 		case strings.HasPrefix(line, "node connect"):
 			remote := strings.Split(line, " ")[2]
 			err := n.Connect(remote)
@@ -126,65 +178,30 @@ func startRepl(n *node.Node) {
 			}
 		case line == "node status":
 			s := n.Status()
-			log.Infof("Status for node %s", s.Address)
-			log.Infof("Total Blocks: %d", s.Length)
-			log.WithFields(log.Fields{
-				"Length":   s.Chains.Post.Length,
-				"Valid":    s.Chains.Post.Valid,
-				"LastHash": s.Chains.Post.LastHash,
-			}).Info("Post Chain")
-			log.WithFields(log.Fields{
-				"Length":   s.Chains.Image.Length,
-				"Valid":    s.Chains.Image.Valid,
-				"LastHash": s.Chains.Image.LastHash,
-			}).Info("Image Chain")
-			log.WithFields(log.Fields{
-				"Length":   s.Chains.Key.Length,
-				"Valid":    s.Chains.Key.Valid,
-				"LastHash": s.Chains.Key.LastHash,
-			}).Info("Key Chain")
-			log.Infof("Remote Connections: %d", s.Connections)
-			log.Info("End Status")
-		case strings.HasPrefix(line, "node sync"):
-			if len(line) <= 9 {
-			log.Errorf("No Sync-Endpoint specified.")
-			} else {
-                        remote := strings.Split(line, " ")[2]
-                        err := n.SynchronizeChain(remote)
-                        if err != nil {
-                                log.Error(err)
-                        } else {
-                                log.Info("Successfully synced Chain")
-                        }}
-
-		case simpleMatch("chain print (post|image|key)", line):
-			c := getChain(n, strings.Split(line, " ")[2])
-			dump, err := c.DumpChain()
+			printInfo(&s)
+		case line == "tangle status":
+			log.Info("--- Tangle Status ---")
+			log.Info("Tips:")
+			for _, t := range n.Tangle.Tips() {
+				log.Info("  ", t.Hash())
+			}
+			log.Info("--- End Status ---")
+		case strings.HasPrefix(line, "node status "):
+			remote := strings.Split(line, " ")[2]
+			i, err := n.RemoteStatus(remote)
 			if err != nil {
 				log.Error(err)
 				break
 			}
-			for _, b := range dump {
-				log.WithFields(log.Fields{
-					"hash": formatHash(b.Hash()),
-					"prev": formatHash(b.PrevHash),
-				}).Debug(b.Content)
-			}
-		case strings.HasPrefix(line, "node sync "):
-			lc := strings.Split(line, " ")
-			content := lc[2]
-			err := n.SynchronizeChain(content)
-			if err != nil {
-				log.Error(err)
-			} else {
-				log.Info("Successfully synced chain")
-			}
-		case simpleMatch("chain validate (post|image|key)", line):
-			c := getChain(n, strings.Split(line, " ")[2])
-			if c.Valid() {
-				log.Info("Chain is valid")
-			} else {
-				log.Error("Chain is invalid")
+			printInfo(i)
+		case line == "tangle print":
+			c := 0
+			for _, h := range n.Tangle.Hashes() {
+				if c == 10 {
+					break
+				}
+				log.Info(h)
+				c++
 			}
 		case line == "exit":
 			return
@@ -205,15 +222,35 @@ func simpleMatch(pattern, s string) bool {
 	return m
 }
 
-func getChain(n *node.Node, t string) *chain.Chain {
-	switch t {
-	case "post":
-		return n.PostChain
-	case "image":
-		return n.ImageChain
-	case "key":
-		return n.KeyChain
-	default:
-		return n.PostChain
+func genpost(c string) *post.Post {
+	content := c
+	key, _ := rsa.GenerateKey(rand.Reader, 2048)
+	privkey := packet.NewRSAPrivateKey(time.Now(), key)
+	buff := bytes.NewBuffer(nil)
+	e := &openpgp.Entity{
+		PrivateKey: privkey,
+		PrimaryKey: &privkey.PublicKey,
 	}
+	_ = openpgp.ArmoredDetachSignText(buff, e, strings.NewReader(content), nil)
+	block, _ := armor.Decode(buff)
+	reader := packet.NewReader(block.Body)
+	pkt, _ := reader.Next()
+	sig, _ := pkt.(*packet.Signature)
+	p := &post.Post{Content: content, Pubkey: &privkey.PublicKey, Signature: sig, Date: time.Now()}
+	_ = p.JSON()
+	return p
+}
+
+func printInfo(s *node.Status) {
+	log.Infof("--- Status for node %s ---", s.Address)
+	log.Infof("Total Sites: %d", s.Length)
+	log.Infof("Remote Connections: %d", s.Connections)
+	log.Infof("--- BEGIN DIFF ---")
+	for _, h := range s.HashDiff.Additions {
+		log.Infof("+ %s", h.String())
+	}
+	for _, h := range s.HashDiff.Deletions {
+		log.Infof("- %s", h.String())
+	}
+	log.Info("--- End Status ---")
 }

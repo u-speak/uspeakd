@@ -77,6 +77,7 @@ func main() {
 			}
 		}
 		go core.RunAPI(n)
+		go core.RunDiag(n)
 
 		if c.Bool("repl") {
 			log.SetLevel(log.DebugLevel)
