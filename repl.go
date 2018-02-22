@@ -5,24 +5,22 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/base64"
+	"encoding/json"
+	"fmt"
 	"io"
-	"io/ioutil"
-	"os"
-	"os/exec"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/u-speak/core/api"
 	"github.com/u-speak/core/node"
 	"github.com/u-speak/core/post"
 	"github.com/u-speak/core/tangle"
 	"github.com/u-speak/core/tangle/hash"
 	"github.com/u-speak/core/tangle/site"
 
-	"github.com/awalterschulze/gographviz"
 	"github.com/chzyer/readline"
 	log "github.com/sirupsen/logrus"
-	"github.com/skratchdot/open-golang/open"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
 	"golang.org/x/crypto/openpgp/packet"
@@ -46,7 +44,6 @@ func startRepl(n *node.Node) {
 		readline.PcItem("tangle",
 			readline.PcItem("print"),
 			readline.PcItem("status"),
-			readline.PcItem("graph"),
 		),
 		readline.PcItem("node",
 			readline.PcItem("connect"),
@@ -85,21 +82,25 @@ func startRepl(n *node.Node) {
 		switch {
 		case strings.HasPrefix(line, "site get "):
 			lc := strings.Split(line, " ")
-			h, err := base64.StdEncoding.DecodeString(lc[2])
+			h, err := base64.URLEncoding.DecodeString(lc[2])
 			if err != nil {
 				log.Error(err)
 				break
 			}
 			s := n.Tangle.Get(hash.FromSlice(h))
+			vals := []hash.Hash{}
+			for _, v := range s.Site.Validates {
+				vals = append(vals, v.Hash())
+			}
 			log.WithFields(log.Fields{
 				"hash":      s.Site.Hash(),
-				"validates": s.Site.Validates,
+				"validates": vals,
 				"weight":    n.Tangle.Weight(s.Site),
 				"type":      s.Site.Type,
 			}).Debug(s.Site.Content)
 		case strings.HasPrefix(line, "data get "):
 			lc := strings.Split(line, " ")
-			h, err := base64.StdEncoding.DecodeString(lc[2])
+			h, err := base64.URLEncoding.DecodeString(lc[2])
 			if err != nil {
 				log.Error(err)
 				break
@@ -138,6 +139,28 @@ func startRepl(n *node.Node) {
 			if err != nil {
 				log.Error(err)
 			}
+		case strings.HasPrefix(line, "site gen "):
+			cnt := line[9:]
+			recs := n.Tangle.RecommendTips()
+			post := genpost(cnt)
+			h, err := post.Hash()
+			if err != nil {
+				log.Error(err)
+				break
+			}
+			s := &site.Site{
+				Validates: recs,
+				Content:   h,
+				Type:      "post",
+			}
+			s.Mine(1)
+			j := api.JSONize(&tangle.Object{Site: s, Data: post})
+			b, err := json.Marshal(j)
+			if err != nil {
+				log.Error(err)
+				break
+			}
+			fmt.Println(string(b))
 		case strings.HasPrefix(line, "node merge "):
 			remote := strings.Split(line, " ")[2]
 			err := n.Merge(remote)
@@ -180,30 +203,6 @@ func startRepl(n *node.Node) {
 				log.Info(h)
 				c++
 			}
-		case line == "tangle graph":
-			output := gengraph(n.Tangle)
-			err := ioutil.WriteFile("/tmp/graph", []byte(output), 0644)
-			if err != nil {
-				log.Error(err)
-				break
-			}
-			f, err := ioutil.TempFile(os.TempDir(), "uspeak-")
-			if err != nil {
-				log.Error(err)
-				break
-			}
-			f.WriteString(output)
-			f.Close()
-			err = exec.Command("dot", "-Tpng", f.Name(), "-o", f.Name()+".png").Run()
-			if err != nil {
-				log.Error(err)
-				break
-			}
-			err = open.Start(f.Name() + ".png")
-			if err != nil {
-				log.Error(err)
-				break
-			}
 		case line == "exit":
 			return
 		case line == "":
@@ -237,42 +236,9 @@ func genpost(c string) *post.Post {
 	reader := packet.NewReader(block.Body)
 	pkt, _ := reader.Next()
 	sig, _ := pkt.(*packet.Signature)
-	p := &post.Post{Content: content, Pubkey: &privkey.PublicKey, Signature: sig}
+	p := &post.Post{Content: content, Pubkey: &privkey.PublicKey, Signature: sig, Date: time.Now()}
+	_ = p.JSON()
 	return p
-}
-
-func gengraph(t *tangle.Tangle) string {
-	sur := func(s string) string {
-		return "\"" + s + "\""
-	}
-	graphAst, _ := gographviz.ParseString(`digraph G {
-rankdir=RL;
-}`)
-	graph := gographviz.NewGraph()
-	if err := gographviz.Analyse(graphAst, graph); err != nil {
-		log.Error(err)
-		return ""
-	}
-	tips := t.Tips()
-	bound := make(map[*site.Site]bool)
-	excl := make(map[hash.Hash]bool)
-	for _, tip := range tips {
-		bound[tip] = true
-	}
-	for len(bound) != 0 {
-		for s := range bound {
-			graph.AddNode("", sur(s.Hash().String()), map[string]string{"shape": "square"})
-			excl[s.Hash()] = true
-			delete(bound, s)
-			for _, v := range s.Validates {
-				graph.AddEdge(sur(s.Hash().String()), sur(v.Hash().String()), true, nil)
-				if !excl[v.Hash()] {
-					bound[v] = true
-				}
-			}
-		}
-	}
-	return graph.String()
 }
 
 func printInfo(s *node.Status) {

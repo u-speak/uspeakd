@@ -6,6 +6,7 @@ node1: install
 	DATA_PATH=/tmp/n1.data.db \
 	TANGLE_PATH=/tmp/n1.tangle.db \
 	NODE_PORT=5001 \
+	DIAG_PORT=1337 \
 	${GOPATH}/bin/uspeakd --repl
 
 node2: install
@@ -14,6 +15,7 @@ node2: install
 	DATA_PATH=/tmp/n2.data.db \
 	TANGLE_PATH=/tmp/n2.tangle.db \
 	NODE_PORT=5002 \
+	DIAG_PORT=1338 \
 	${GOPATH}/bin/uspeakd --repl
 
 node3: install
