@@ -2,8 +2,7 @@ package main
 
 import (
 	"bytes"
-	"crypto/rand"
-	"crypto/rsa"
+	"crypto"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -112,7 +111,7 @@ func startRepl(n *node.Node) {
 				log.WithFields(log.Fields{
 					"date":  p.Timestamp,
 					"valid": p.Verify() == nil,
-					"keyid": p.Pubkey.KeyIdShortString(),
+					"keyid": p.Pubkey.PrimaryKey.KeyIdShortString(),
 				}).Info(p.Content)
 			}
 		case strings.HasPrefix(line, "site add "):
@@ -224,19 +223,21 @@ func simpleMatch(pattern, s string) bool {
 
 func genpost(c string) *post.Post {
 	content := c
-	key, _ := rsa.GenerateKey(rand.Reader, 2048)
-	privkey := packet.NewRSAPrivateKey(time.Now(), key)
-	buff := bytes.NewBuffer(nil)
-	e := &openpgp.Entity{
-		PrivateKey: privkey,
-		PrimaryKey: &privkey.PublicKey,
+	conf := &packet.Config{
+		DefaultHash: crypto.SHA256,
 	}
-	_ = openpgp.ArmoredDetachSignText(buff, e, strings.NewReader(content), nil)
+	e, err := openpgp.NewEntity("REPL", "uspeakd repl", "repl@uspeak.io", conf)
+	if err != nil {
+		log.Fatal(err)
+	}
+	e.SerializePrivate(bytes.NewBuffer(nil), conf)
+	buff := bytes.NewBuffer(nil)
+	_ = openpgp.ArmoredDetachSignText(buff, e, strings.NewReader(content), conf)
 	block, _ := armor.Decode(buff)
 	reader := packet.NewReader(block.Body)
 	pkt, _ := reader.Next()
 	sig, _ := pkt.(*packet.Signature)
-	p := &post.Post{Content: content, Pubkey: &privkey.PublicKey, Signature: sig, Timestamp: time.Now().Unix()}
+	p := &post.Post{Content: content, Pubkey: e, Signature: sig, Timestamp: time.Now().Unix()}
 	_ = p.JSON()
 	return p
 }
