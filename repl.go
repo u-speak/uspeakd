@@ -21,7 +21,6 @@ import (
 	"github.com/chzyer/readline"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/openpgp"
-	"golang.org/x/crypto/openpgp/armor"
 	"golang.org/x/crypto/openpgp/packet"
 )
 
@@ -110,7 +109,6 @@ func startRepl(n *node.Node) {
 				p := s.Data.(*post.Post)
 				log.WithFields(log.Fields{
 					"date":  p.Timestamp,
-					"valid": p.Verify() == nil,
 					"keyid": p.Pubkey.PrimaryKey.KeyIdShortString(),
 				}).Info(p.Content)
 			}
@@ -233,11 +231,7 @@ func genpost(c string) *post.Post {
 	e.SerializePrivate(bytes.NewBuffer(nil), conf)
 	buff := bytes.NewBuffer(nil)
 	_ = openpgp.ArmoredDetachSignText(buff, e, strings.NewReader(content), conf)
-	block, _ := armor.Decode(buff)
-	reader := packet.NewReader(block.Body)
-	pkt, _ := reader.Next()
-	sig, _ := pkt.(*packet.Signature)
-	p := &post.Post{Content: content, Pubkey: e, Signature: sig, Timestamp: time.Now().Unix()}
+	p := &post.Post{Content: content, Pubkey: e, Signature: string(buff.Bytes()), Timestamp: time.Now().Unix()}
 	_ = p.JSON()
 	return p
 }
